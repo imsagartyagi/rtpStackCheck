@@ -28,7 +28,7 @@ public class ReceptionReport {
 
     private long ssrc;
     private short fractionLost;
-    private int cumulativeNumberOfPacketsLost;
+    private int packetsReceived;    // cumulativeNumberOfPacketsLost and its related function is changed to packetsReceived, as per out requirement.
     private long extendedHighestSequenceNumberReceived;
     private long interArrivalJitter;
     private long lastSenderReport;
@@ -45,7 +45,7 @@ public class ReceptionReport {
         ChannelBuffer buffer = ChannelBuffers.buffer(24); // 4 + 1 + 3 + 4 + 4 + 4 + 4
         buffer.writeInt((int) block.ssrc);
         buffer.writeByte(block.fractionLost);
-        buffer.writeMedium(block.cumulativeNumberOfPacketsLost);
+        buffer.writeMedium(block.packetsReceived);
         buffer.writeInt((int) block.extendedHighestSequenceNumberReceived);
         buffer.writeInt((int) block.interArrivalJitter);
         buffer.writeInt((int) block.lastSenderReport);
@@ -57,7 +57,7 @@ public class ReceptionReport {
         ReceptionReport block = new ReceptionReport();
         block.setSsrc(buffer.readUnsignedInt());
         block.setFractionLost(buffer.readUnsignedByte());
-        block.setCumulativeNumberOfPacketsLost(buffer.readUnsignedMedium());
+        block.setPacketsReceived(buffer.readUnsignedMedium());
         block.setExtendedHighestSequenceNumberReceived(buffer.readUnsignedInt());
         block.setInterArrivalJitter(buffer.readUnsignedInt());
         block.setLastSenderReport(buffer.readUnsignedInt());
@@ -95,15 +95,15 @@ public class ReceptionReport {
         this.fractionLost = fractionLost;
     }
 
-    public int getCumulativeNumberOfPacketsLost() {
-        return cumulativeNumberOfPacketsLost;
+    public int getPacketsReceived() {
+        return packetsReceived;
     }
 
-    public void setCumulativeNumberOfPacketsLost(int cumulativeNumberOfPacketsLost) {
-        if ((cumulativeNumberOfPacketsLost < 0) || (cumulativeNumberOfPacketsLost > 0x00ffffff)) {
+    public void setPacketsReceived(int packetsReceived) {
+        if ((packetsReceived < 0) || (packetsReceived > 0x00ffffff)) {
             throw new IllegalArgumentException("Valid range for Cumulative Number of Packets Lost is [0;0x00ffffff]");
         }
-        this.cumulativeNumberOfPacketsLost = cumulativeNumberOfPacketsLost;
+        this.packetsReceived = packetsReceived;
     }
 
     public long getExtendedHighestSequenceNumberReceived() {
@@ -159,7 +159,7 @@ public class ReceptionReport {
                 .append("ReceptionReport{")
                 .append("ssrc=").append(this.ssrc)
                 .append(", fractionLost=").append(this.fractionLost)
-                .append(", cumulativeNumberOfPacketsLost=").append(this.cumulativeNumberOfPacketsLost)
+                .append(", cumulativeNumberOfPacketsLost=").append(this.packetsReceived)
                 .append(", extendedHighestSequenceNumberReceived=").append(this.extendedHighestSequenceNumberReceived)
                 .append(", interArrivalJitter=").append(this.interArrivalJitter)
                 .append(", lastSenderReport=").append(this.lastSenderReport)

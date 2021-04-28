@@ -66,11 +66,17 @@ public class stackCheck {
             }
         }
         byte[] deadbeef = {(byte) 0xde, (byte) 0xad, (byte) 0xbe, (byte) 0xef};
+        DataPacket packet = new DataPacket();
+        packet.setData(deadbeef);
+        packet.setTimestamp(0x45);
+        packet.setMarker(false);
         for (byte i = 0; i < N; i++) {
-            sessions[i].sendData(deadbeef, 0x45, false);
-            sessions[i].sendData(deadbeef, 0x45, false);
+            packet.setSsrc(i);
+            packet.setSequenceNumber(5);
+            sessions[i].sendDataPacket(packet);
+            packet.setSequenceNumber(12);
+            sessions[i].sendDataPacket(packet);
         }
-
 
         ControlPacket controlPacket = new ControlPacket(ControlPacket.Type.SOURCE_DESCRIPTION) {
             @Override

@@ -78,7 +78,7 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
 
     // TODO not working with USE_NIO = false
     protected static final boolean USE_NIO = true;
-    protected static final boolean DISCARD_OUT_OF_ORDER = true;
+    protected static final boolean DISCARD_OUT_OF_ORDER = false;
     protected static final int BANDWIDTH_LIMIT = 256;
     protected static final int SEND_BUFFER_SIZE = 1500;
     protected static final int RECEIVE_BUFFER_SIZE = 1500;
@@ -311,9 +311,6 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
         packet.setData(data);
         packet.setMarker(marked);
 
-        //MY UPDATE
-        this.incrementSentBytes(data.length);    // FIX added. //TODO The count SHOULD be reset if the sender changes its SSRC identifier.
-
         return this.sendDataPacket(packet);
     }
 
@@ -325,10 +322,15 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
 
         packet.setPayloadType(this.payloadType);
         packet.setSsrc(this.localParticipant.getSsrc());
-        packet.setSequenceNumber(this.sequence.incrementAndGet());
+
+        /*Commented Out In order to set sequence number by on our own.*/
+      //  packet.setSequenceNumber(this.sequence.incrementAndGet());
 
         //MY UPDATE
         this.incrementSentPackets();    // FIX added. //TODO The count SHOULD be reset if the sender changes its SSRC identifier.
+
+        //MY UPDATE
+        this.incrementSentBytes(packet.getDataSize());    // FIX added. //TODO The count SHOULD be reset if the sender changes its SSRC identifier.
 
         this.internalSendData(packet);
         return true;
@@ -463,7 +465,7 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
         }
 
         // Associate the packet with a participant or create one.
-        RtpParticipant participant = this.participantDatabase.getOrCreateParticipantFromDataPacket(origin, packet);
+        RtpParticipant participant = this.participantDatabase.getOrCreateParticipantFromDataPacket(origin, packet);     // Expecting GET will work.
         if (participant == null) {
             // Depending on database implementation, it may chose not to create anything, in which case this packet
             // must be discarded.
@@ -477,9 +479,22 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
             return;
         }
 
-        // Update last SN for participant.
-        participant.setLastSequenceNumber(packet.getSequenceNumber());
+        //update receivedPacket information from a particular participant.
+        participant.incrementReceivedPackets();
+        participant.incrementReceivedPacketsBytes(packet.getDataSize());
+
+        // Update information related to sequence numbers for this participant in database.
+
+        int dataPacketSequenceNumber = (int) packet.getSequenceNumber();
+        participant.setLastSequenceNumber(dataPacketSequenceNumber);
         participant.setLastDataOrigin(origin);
+
+
+        // 32 bit Sequence number is used, initial sequence number should be small enough to transmit packet for long time.
+        // It will take around 11000 hrs to consume all seq. numbers at the rate of 50 packets per second.
+        // RTP packet format is changed to support 32 bit sequence number rather the standard 16 bit seq. number.
+
+        participant.setMaxSequenceNumber(Math.max(participant.getMaxSequenceNumber(), dataPacketSequenceNumber));
 
         // Finally, dispatch the event to the data listeners.
         for (RtpSessionDataListener listener : this.dataListeners) {
@@ -493,8 +508,6 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
     @Override
     public void controlPacketReceived(SocketAddress origin, CompoundControlPacket packet) {
 
-        // Comment by Me
-        System.out.println("Reception report received!");
 
         if (!this.running.get()) {
             return;
@@ -544,6 +557,9 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
             @Override
             public void doWithParticipant(RtpParticipant participant) throws Exception {
                 AbstractReportPacket report = buildReportPacket(currentSsrc, participant);
+
+                participant.setReceivedPackets(0);  // For every RTCP transmission interval, Received Packets is reset.
+
                 internalSendControl(new CompoundControlPacket(report, sdesPacket));
             }
         });
@@ -755,8 +771,8 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
             // Otherwise, build a sender report.
             SenderReportPacket senderPacket = new SenderReportPacket();
             senderPacket.setNtpTimestamp(0); // FIXME                   FIXED --> Here wall clock time is needed to synchronize different participants.
-            senderPacket.setRtpTimestamp(System.currentTimeMillis()); // FIXME
-            senderPacket.setSenderPacketCount(this.getSentPackets());   // FIXME  --> Also need to call incrementSentPacket() on sending the data-packet.
+            senderPacket.setRtpTimestamp(0); // FIXME
+            senderPacket.setSenderPacketCount(this.getSentPackets());
             senderPacket.setSenderOctetCount(this.getSentBytes());
             packet = senderPacket;
         }
@@ -768,9 +784,12 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
             block.setSsrc(context.getInfo().getSsrc());
             block.setDelaySinceLastSenderReport(0); // FIXME       FIXED --> Maintain an extra field lastSenderReportTimeStamp in class SenderReportPacket.
             block.setFractionLost((short) 0); // FIXME
-            block.setExtendedHighestSequenceNumberReceived(0); // FIXME
             block.setInterArrivalJitter(0); // FIXME
-            block.setCumulativeNumberOfPacketsLost(0); // FIXME
+
+            /*The two field that is required by our application are ready.*/
+            block.setExtendedHighestSequenceNumberReceived(context.getMaxSequenceNumber()); // FIXED
+            block.setPacketsReceived((int) context.getReceivedPackets()); // FIXED
+
             packet.addReceptionReportBlock(block);
         }
 

@@ -53,7 +53,7 @@ public class DataPacket {
     private RtpVersion version;
     private boolean marker;
     private int payloadType;
-    private int sequenceNumber;
+    private long sequenceNumber;
     private long timestamp;
     private long ssrc;
 
@@ -94,7 +94,7 @@ public class DataPacket {
         packet.marker = (b & 0x80) > 0; // mask 0000 0001
         packet.payloadType = (b & 0x7f); // mask 0111 1111
 
-        packet.sequenceNumber = buffer.readUnsignedShort();
+        packet.sequenceNumber = buffer.readUnsignedInt();       //Changed decoding to increase the sequence number range.
         packet.timestamp = buffer.readUnsignedInt();
         packet.ssrc = buffer.readUnsignedInt();
 
@@ -133,7 +133,7 @@ public class DataPacket {
     }
 
     public static ChannelBuffer encode(int fixedBlockSize, DataPacket packet) {
-        int size = 12; // Fixed width
+        int size = 14; // Fixed width   //2 bytes increased for larger sequence number range.
         if (packet.hasExtension()) {
             size += 4 + packet.getExtensionDataSize();
         }
@@ -174,7 +174,7 @@ public class DataPacket {
         }
         buffer.writeByte(b);
 
-        buffer.writeShort(packet.sequenceNumber);
+        buffer.writeInt((int) packet.sequenceNumber);       // Changed to increase the sequence number range.
         buffer.writeInt((int) packet.timestamp);
         buffer.writeInt((int) packet.ssrc);
 
@@ -297,7 +297,7 @@ public class DataPacket {
         this.payloadType = payloadType;
     }
 
-    public int getSequenceNumber() {
+    public long getSequenceNumber() {
         return sequenceNumber;
     }
 
