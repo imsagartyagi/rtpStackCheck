@@ -520,31 +520,33 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
             return;
         }
 
-        for (ControlPacket controlPacket : packet.getControlPackets()) {
-            switch (controlPacket.getType()) {
-                case SENDER_REPORT:
-                case RECEIVER_REPORT:
-                    this.handleReportPacket(origin, (AbstractReportPacket) controlPacket);
-                    break;
-                case SOURCE_DESCRIPTION:
-                    this.handleSdesPacket(origin, (SourceDescriptionPacket) controlPacket);
-                    break;
-                case BYE:
-                    this.handleByePacket(origin, (ByePacket) controlPacket);
-                    break;
-                case APP_DATA:
-                    for (RtpSessionControlListener listener : this.controlListeners) {
-                        listener.appDataReceived(this, (AppDataPacket) controlPacket);
-                    }
-                default:
-                    // do nothing, unknown case
-            }
-        }
+//        for (ControlPacket controlPacket : packet.getControlPackets()) {
+//            switch (controlPacket.getType()) {
+//                case SENDER_REPORT:
+//                case RECEIVER_REPORT:
+//                    this.handleReportPacket(origin, (AbstractReportPacket) controlPacket);
+//                    break;
+//                case SOURCE_DESCRIPTION:
+//                    this.handleSdesPacket(origin, (SourceDescriptionPacket) controlPacket);
+//                    break;
+//                case BYE:
+//                    this.handleByePacket(origin, (ByePacket) controlPacket);
+//                    break;
+//                case APP_DATA:
+//                    for (RtpSessionControlListener listener : this.controlListeners) {
+//                        listener.appDataReceived(this, (AppDataPacket) controlPacket);
+//                    }
+//                default:
+//                    // do nothing, unknown case
+//            }
+//        }
 
-        //Dispatching the event to Control Packet Listeners, application requirement.
+        //here the event is dispatched to application developer, participant is always added in database by dataPacket.
+        //i.e, getOrCreateParticipantFromDataPacket is used always.
         for (RtpSessionControlListener listener : this.controlListeners) {
             listener.controlPacketReceived(this, packet);
         }
+
     }
 
     // Runnable -------------------------------------------------------------------------------------------------------
@@ -561,8 +563,6 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
             @Override
             public void doWithParticipant(RtpParticipant participant) throws Exception {
                 AbstractReportPacket report = buildReportPacket(currentSsrc, participant);
-
-                participant.setReceivedPackets(0);  // For every RTCP transmission interval, Received Packets is reset.
 
                 internalSendControl(new CompoundControlPacket(report, sdesPacket));
             }
@@ -783,20 +783,23 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
         packet.setSenderSsrc(currentSsrc);
 
         // If this source sent data, then calculate the link quality to build a reception report block.
-        if (context.getReceivedPackets() > 0) {
-            ReceptionReport block = new ReceptionReport();
-            block.setSsrc(context.getInfo().getSsrc());
-            block.setDelaySinceLastSenderReport(0); // FIXME       FIXED --> Maintain an extra field lastSenderReportTimeStamp in class SenderReportPacket.
-            block.setFractionLost((short) 0); // FIXME
-            block.setInterArrivalJitter(0); // FIXME
 
-            /*The two field that is required by our application are ready.*/
-            block.setExtendedHighestSequenceNumberReceived(context.getMaxSequenceNumber()); // FIXED
-            block.setPacketsReceived((int) context.getReceivedPackets()); // FIXED
+        Map<Long, RtpParticipant> members =  this.participantDatabase.getMembers();
+        for (RtpParticipant participant : members.values())
+        {
+            if (participant.getReceivedPackets() > 0) {
+                ReceptionReport block = new ReceptionReport();
+                block.setSsrc(participant.getInfo().getSsrc());
+                block.setDelaySinceLastSenderReport(0); // FIXME       FIXED --> Maintain an extra field lastSenderReportTimeStamp in class SenderReportPacket.
+                block.setFractionLost((short) 0); // FIXME
+                block.setInterArrivalJitter(0); // FIXME
 
-            packet.addReceptionReportBlock(block);
+                /*The two field that is required by our application are ready.*/
+                block.setExtendedHighestSequenceNumberReceived(participant.getMaxSequenceNumber()); // FIXED
+                block.setPacketsReceived((int) participant.getReceivedPackets()); // FIXED
+                packet.addReceptionReportBlock(block);
+            }
         }
-
         return packet;
     }
 

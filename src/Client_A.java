@@ -15,32 +15,33 @@ public class Client_A {
 
         for(byte i = 0; i < N; i++)
         {
-            long ssrc = SsrcGenerator.generateSsrc();
+            long ssrc = 254;
             final RtpParticipant participant = RtpParticipant
                     .createReceiver(new RtpParticipantInfo(ssrc), "127.0.0.1", 10000, 10001);
-            sessions[i] = new MultiParticipantSession("session A to B,C" , 8, participant);
+            sessions[i] = new MultiParticipantSession("Client A" , 8, participant);
             sessions[i].init();;
             sessions[i].addDataListener(new RtpSessionDataListener() {
                 @Override
                 public void dataPacketReceived(RtpSession session, RtpParticipantInfo participant, DataPacket packet) {
-                    System.err.println(session.getId() + " received data from " + participant + ": " + packet);
+                    System.err.println(session.getId() + " received data from " + participant.getSsrc() + " Data: " + packet);
                 }
             });
             sessions[i].addControlListener(new RtpSessionControlListener() {
                 @Override
                 public void controlPacketReceived(RtpSession session, CompoundControlPacket packet) {
 
-                    System.err.println("CompoundControlPacket received by session " + session.getId());
+                    System.err.println("CompoundControlPacket received" );
 
                     for(ControlPacket pkt: packet.getControlPackets())
                     {
-                        if (pkt.getType() == ControlPacket.Type.SENDER_REPORT)
+
+                        if (pkt.getType() == ControlPacket.Type.SENDER_REPORT || pkt.getType() == ControlPacket.Type.RECEIVER_REPORT)
                         {
                             AbstractReportPacket abstractReportPacket = (AbstractReportPacket) pkt;
                             for (ReceptionReport receptionReport : abstractReportPacket.getReceptionReports()) {
                                 if (receptionReport.getSsrc() == participant.getSsrc()) {
-                                    System.out.println("Extended Highest Sequence Number received: "+receptionReport.getExtendedHighestSequenceNumberReceived());
-                                    System.out.println("Packets Received: " + receptionReport.getPacketsReceived());
+                                    System.out.println("Ext Highest Seq. No. Recvd: "+receptionReport.getExtendedHighestSequenceNumberReceived() + " from " + abstractReportPacket.getSenderSsrc());
+                                    System.out.println("Pkts Recvd: " + receptionReport.getPacketsReceived());
                                 }
                             }
                         }
@@ -54,12 +55,13 @@ public class Client_A {
         }
 
         RtpParticipant participant = RtpParticipant
-                .createReceiver(new RtpParticipantInfo(1), "127.0.0.1", 52083, 52084);
-        System.err.println("Adding " + participant + " to session " + sessions[0].getId());
+                .createReceiver(new RtpParticipantInfo(1), "127.0.0.1", 50750, 50751);
+        System.err.println("Adding " + participant + " to session " + sessions[0].getLocalParticipant().getSsrc() + " as a receiver");
         sessions[0].addReceiver(participant);
 
 
         byte[] deadbeef = {(byte) 0xde, (byte) 0xad, (byte) 0xbe, (byte) 0xef};
+
         for (byte i = 0; i < 1000; i++) {
             DataPacket packet = new DataPacket();
             packet.setData(deadbeef);
@@ -67,7 +69,7 @@ public class Client_A {
             sessions[0].sendDataPacket(packet);
 
             try {
-                Thread.sleep(2000);
+                Thread.sleep(3000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

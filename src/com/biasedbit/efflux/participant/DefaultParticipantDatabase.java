@@ -177,6 +177,9 @@ public class DefaultParticipantDatabase implements ParticipantDatabase {
 
     @Override
     public RtpParticipant getOrCreateParticipantFromDataPacket(SocketAddress origin, DataPacket packet) {
+
+        boolean for_delay_torelant_star_topology = false;
+
         this.lock.writeLock().lock();
         try {
             RtpParticipant participant = this.members.get(packet.getSsrc());
@@ -184,7 +187,7 @@ public class DefaultParticipantDatabase implements ParticipantDatabase {
                 // Iterate through the receivers, trying to find a match for this participant through the RTP ports.
                 boolean isReceiver = false;
                 for (RtpParticipant receiver : this.receivers) {
-                    if (receiver.getDataDestination().equals(origin)) {
+                    if (receiver.getDataDestination().equals(origin)  && for_delay_torelant_star_topology) {
                         // Will be added to the members list.
                         receiver.getInfo().setSsrc(packet.getSsrc());
                         participant = receiver;
