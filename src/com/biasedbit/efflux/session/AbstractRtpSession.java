@@ -508,7 +508,6 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
     @Override
     public void controlPacketReceived(SocketAddress origin, CompoundControlPacket packet) {
 
-
         if (!this.running.get()) {
             return;
         }
@@ -540,6 +539,11 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
                 default:
                     // do nothing, unknown case
             }
+        }
+
+        //Dispatching the event to Control Packet Listeners, application requirement.
+        for (RtpSessionControlListener listener : this.controlListeners) {
+            listener.controlPacketReceived(this, packet);
         }
     }
 
