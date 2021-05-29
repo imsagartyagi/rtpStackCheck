@@ -159,7 +159,7 @@ public class ReceptionReport {
                 .append("ReceptionReport{")
                 .append("ssrc=").append(this.ssrc)
                 .append(", fractionLost=").append(this.fractionLost)
-                .append(", cumulativeNumberOfPacketsLost=").append(this.packetsReceived)
+                .append(", packetsReceived=").append(this.packetsReceived)
                 .append(", extendedHighestSequenceNumberReceived=").append(this.extendedHighestSequenceNumberReceived)
                 .append(", interArrivalJitter=").append(this.interArrivalJitter)
                 .append(", lastSenderReport=").append(this.lastSenderReport)

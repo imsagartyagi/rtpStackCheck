@@ -9,17 +9,18 @@ import com.biasedbit.efflux.session.RtpSessionDataListener;
 
 public class Client_A {
     public static void main(String[] args) {
+
         final byte N = 1;
         final MultiParticipantSession[] sessions;
         sessions = new MultiParticipantSession[N];
-
         for(byte i = 0; i < N; i++)
         {
             long ssrc = 254;
             final RtpParticipant participant = RtpParticipant
                     .createReceiver(new RtpParticipantInfo(ssrc), "127.0.0.1", 10000, 10001);
             sessions[i] = new MultiParticipantSession("Client A" , 8, participant);
-            sessions[i].init();;
+            sessions[i].init();
+
             sessions[i].addDataListener(new RtpSessionDataListener() {
                 @Override
                 public void dataPacketReceived(RtpSession session, RtpParticipantInfo participant, DataPacket packet) {
@@ -34,7 +35,6 @@ public class Client_A {
 
                     for(ControlPacket pkt: packet.getControlPackets())
                     {
-
                         if (pkt.getType() == ControlPacket.Type.SENDER_REPORT || pkt.getType() == ControlPacket.Type.RECEIVER_REPORT)
                         {
                             AbstractReportPacket abstractReportPacket = (AbstractReportPacket) pkt;
@@ -61,19 +61,16 @@ public class Client_A {
 
 
         byte[] deadbeef = {(byte) 0xde, (byte) 0xad, (byte) 0xbe, (byte) 0xef};
-
-        for (byte i = 0; i < 1000; i++) {
+        for (byte i = 0; i < 100; i++) {
             DataPacket packet = new DataPacket();
             packet.setData(deadbeef);
             packet.setSequenceNumber(i);
             sessions[0].sendDataPacket(packet);
-
             try {
                 Thread.sleep(3000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-
         }
     }
 }

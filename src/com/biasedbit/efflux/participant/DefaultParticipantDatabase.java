@@ -177,9 +177,21 @@ public class DefaultParticipantDatabase implements ParticipantDatabase {
 
     @Override
     public RtpParticipant getOrCreateParticipantFromDataPacket(SocketAddress origin, DataPacket packet) {
+	
+
+	/* In star topology i.e, a server in between, receivers list contains python server in it
+	   and we want to attach a data packet to another client (participant) and not the server, so the 
+	   members list (in database) should contains the clients of the python server as their 
+	   remote participant and should not touch receiver (python server) in any case.
+
+	   Also, we are always adding into members list using createFromUnexpectedDataPacket()
+	   function and only data packets are used to add members into this list and not SDES
+	   packet (although it becomes kind of SDEs only), because we have dispatched 
+	   controlPacketReceived event to application developer.
+	*/
 
         boolean for_delay_torelant_star_topology = false;
-
+	
         this.lock.writeLock().lock();
         try {
             RtpParticipant participant = this.members.get(packet.getSsrc());

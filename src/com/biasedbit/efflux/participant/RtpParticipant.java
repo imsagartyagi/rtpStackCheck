@@ -33,7 +33,6 @@ public class RtpParticipant {
 
     // constants ------------------------------------------------------------------------------------------------------
 
-    private static final int CYCLES = (1<<16);
     private static final int VALID_PACKETS_UNTIL_VALID_PARTICIPANT = 3;
 
     // configuration --------------------------------------------------------------------------------------------------
@@ -49,10 +48,7 @@ public class RtpParticipant {
     private long lastReceptionInstant;
     private long byeReceptionInstant;
     private int lastSequenceNumber;
-
-    //MY UPDATE
     private int maxSequenceNumber;
-
     private boolean receivedSdes;
     private final AtomicLong receivedByteCounter;
     private final AtomicLong receivedPacketCounter;
@@ -64,9 +60,7 @@ public class RtpParticipant {
         // For internal use only.
         this.info = info;
 
-        //MY UPDATE
         this.maxSequenceNumber = -1;
-
         this.lastSequenceNumber = -1;
         this.lastReceptionInstant = 0;
         this.byeReceptionInstant = 0;
@@ -187,7 +181,6 @@ public class RtpParticipant {
         return lastSequenceNumber;
     }
 
-    //MY UPDATE
     public int getMaxSequenceNumber() { return maxSequenceNumber; }
 
     public void setMaxSequenceNumber(int maxSequenceNumber) { this.maxSequenceNumber = maxSequenceNumber; }
@@ -206,12 +199,11 @@ public class RtpParticipant {
     }
     public void setReceivedPackets(long receivedPackets){ this.receivedPacketCounter.set(receivedPackets);}     // this function is used to reset the receivedPacketCounter in every RTCP transmission interval.
 
-    // MY UPDATE
+
     public long incrementReceivedPackets(){
         return this.receivedPacketCounter.incrementAndGet();
     }
 
-    // MY UPDATE
     public long incrementReceivedPacketsBytes(int delta)
     {
         if (delta < 0)

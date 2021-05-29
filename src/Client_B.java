@@ -59,11 +59,6 @@ public class Client_B {
         sessions[0].addReceiver(participant);
 
         byte[] deadbeef = {(byte) 0xde, (byte) 0xad, (byte) 0xbe, (byte) 0xef};
-//        DataPacket packet = new DataPacket();
-//        packet.setData(deadbeef);
-//        packet.setSequenceNumber(8);
-//        sessions[0].sendDataPacket(packet);
-
 
         for (byte i = 0; i < 1000; i++) {
             DataPacket packet = new DataPacket();
@@ -72,7 +67,7 @@ public class Client_B {
             sessions[0].sendDataPacket(packet);
 
             try {
-                Thread.sleep(4000);
+                Thread.sleep(3000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

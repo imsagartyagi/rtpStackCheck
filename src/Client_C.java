@@ -68,7 +68,7 @@ public class Client_C {
             sessions[0].sendDataPacket(packet);
 
             try {
-                Thread.sleep(7000);
+                Thread.sleep(3000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

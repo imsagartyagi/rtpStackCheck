@@ -326,10 +326,8 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
         /*Commented Out In order to set sequence number by on our own.*/
       //  packet.setSequenceNumber(this.sequence.incrementAndGet());
 
-        //MY UPDATE
         this.incrementSentPackets();    // FIX added. //TODO The count SHOULD be reset if the sender changes its SSRC identifier.
 
-        //MY UPDATE
         this.incrementSentBytes(packet.getDataSize());    // FIX added. //TODO The count SHOULD be reset if the sender changes its SSRC identifier.
 
         this.internalSendData(packet);
@@ -465,7 +463,7 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
         }
 
         // Associate the packet with a participant or create one.
-        RtpParticipant participant = this.participantDatabase.getOrCreateParticipantFromDataPacket(origin, packet);     // Expecting GET will work.
+        RtpParticipant participant = this.participantDatabase.getOrCreateParticipantFromDataPacket(origin, packet);
         if (participant == null) {
             // Depending on database implementation, it may chose not to create anything, in which case this packet
             // must be discarded.
@@ -483,31 +481,27 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
         participant.incrementReceivedPackets();
         participant.incrementReceivedPacketsBytes(packet.getDataSize());
 
-        // Update information related to sequence numbers for this participant in database.
-
-        int dataPacketSequenceNumber = (int) packet.getSequenceNumber();
-        participant.setLastSequenceNumber(dataPacketSequenceNumber);
+        // Update last SN for participant.
+        participant.setLastSequenceNumber((int) packet.getSequenceNumber());
         participant.setLastDataOrigin(origin);
 
 
         // 32 bit Sequence number is used, initial sequence number should be small enough to transmit packet for long time.
-        // It will take around 11000 hrs to consume all seq. numbers at the rate of 50 packets per second.
+        // It will take around 23000 hrs to consume all seq. numbers at the rate of 50 packets per second.
         // RTP packet format is changed to support 32 bit sequence number rather the standard 16 bit seq. number.
 
-        participant.setMaxSequenceNumber(Math.max(participant.getMaxSequenceNumber(), dataPacketSequenceNumber));
+        participant.setMaxSequenceNumber(Math.max(participant.getMaxSequenceNumber(), (int) packet.getSequenceNumber()));
 
         // Finally, dispatch the event to the data listeners.
         for (RtpSessionDataListener listener : this.dataListeners) {
             listener.dataPacketReceived(this, participant.getInfo(), packet);
         }
-
     }
 
     // ControlPacketReceiver ------------------------------------------------------------------------------------------
 
     @Override
     public void controlPacketReceived(SocketAddress origin, CompoundControlPacket packet) {
-
         if (!this.running.get()) {
             return;
         }
@@ -542,11 +536,11 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
 //        }
 
         //here the event is dispatched to application developer, participant is always added in database by dataPacket.
-        //i.e, getOrCreateParticipantFromDataPacket is used always.
+        //i.e, always getOrCreateParticipantFromDataPacket() is used to a participant in member table and not SDES, in our application.
+	//a combination of automated RTCP handling and dispatching the controlPacketReceived to user.
         for (RtpSessionControlListener listener : this.controlListeners) {
             listener.controlPacketReceived(this, packet);
         }
-
     }
 
     // Runnable -------------------------------------------------------------------------------------------------------
@@ -563,7 +557,6 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
             @Override
             public void doWithParticipant(RtpParticipant participant) throws Exception {
                 AbstractReportPacket report = buildReportPacket(currentSsrc, participant);
-
                 internalSendControl(new CompoundControlPacket(report, sdesPacket));
             }
         });
@@ -592,14 +585,12 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
             // matters here is the link between this participant and ourselves).
             if (receptionReport.getSsrc() == this.localParticipant.getSsrc()) {
                 // TODO
-
             }
         }
 
         // For sender reports, also handle the sender information.
         if (abstractReportPacket.getType().equals(ControlPacket.Type.SENDER_REPORT)) {
             SenderReportPacket senderReport = (SenderReportPacket) abstractReportPacket;
-
             // TODO
         }
     }
@@ -769,7 +760,7 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
     protected AbstractReportPacket buildReportPacket(long currentSsrc, RtpParticipant context) {
         AbstractReportPacket packet;
         if (this.getSentPackets() == 0) {
-            // If no packets were sent to this source, then send a receiver report.
+
             packet = new ReceiverReportPacket();
         } else {
             // Otherwise, build a sender report.
@@ -782,7 +773,7 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
         }
         packet.setSenderSsrc(currentSsrc);
 
-        // If this source sent data, then calculate the link quality to build a reception report block.
+
 
         Map<Long, RtpParticipant> members =  this.participantDatabase.getMembers();
         for (RtpParticipant participant : members.values())
@@ -891,7 +882,7 @@ public abstract class AbstractRtpSession implements RtpSession, TimerTask {
 
     protected long updatePeriodicRtcpSendInterval() {
         // TODO make this adaptative
-        return (this.periodicRtcpSendInterval = 5);
+        return (this.periodicRtcpSendInterval = 6);
     }
 
     // getters & setters ----------------------------------------------------------------------------------------------
